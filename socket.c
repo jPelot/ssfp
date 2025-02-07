@@ -49,7 +49,7 @@ int
 start_client(char* ip, int port)
 {
   int sockfd;
-  struct sockaddr_in servaddr;
+  struct sockaddr_in servaddr, *res;
 
   // socket create and verification
   sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -65,6 +65,14 @@ start_client(char* ip, int port)
   servaddr.sin_family = AF_INET;
   servaddr.sin_addr.s_addr = inet_addr(ip); 
   servaddr.sin_port = htons(port);
+
+  /*
+  int status;
+  if ((status = getaddrinfo(ip, NULL, &servaddr, &res)) != 0) {
+    fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
+    return 2;
+  }
+  */
 
   if (connect(sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr)) != 0) {
     printf("Connection with the server failed...\n");
