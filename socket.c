@@ -277,12 +277,16 @@ client_send(char* string) {
 
 char*
 client_read() {
-  char *buffer[2048];
-  int bytes_received = SSL_read(client_ssl, buffer, sizeof(buffer));
-
-  char *out = malloc(bytes_received + 1);
-  memcpy(out,buffer, bytes_received + 1);
-  
+  char *buffer = malloc(2048);
+  char *buffptr = buffer;
+  int bytes_read;
+  int total_bytes = 0;
+  while((bytes_read = SSL_read(client_ssl, buffptr, 2048-total_bytes)) > 0) {
+    total_bytes += bytes_read;
+    buffptr += bytes_read;
+  }
+  buffer[total_bytes] = '\0';
+  return buffer;
 }
 
 char*

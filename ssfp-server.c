@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include "ssfp.h"
 #include "socket.h"
 
@@ -29,6 +30,9 @@ main()
         printf("|%s\n",element->options[j]->id);
       }
     }
+
+    char response[] = "calc\r\n \r\n&number Number\nfield num1 Number One\r\n";
+    server_send(response);
 
     free(buff);
   }

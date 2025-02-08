@@ -9,6 +9,7 @@ void server_close(int socket_listen);
 int start_client(char *ip, char *port);
 void client_send(char* message);
 void client_close(int socket);
+char *client_read();
 char *read_fd(int fd);
 
 #endif // socket_h

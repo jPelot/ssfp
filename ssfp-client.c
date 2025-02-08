@@ -1,6 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include "socket.h"
+
+void delay(int milliseconds) {
+  clock_t start_time = clock();
+  while(clock() < start_time + milliseconds * CLOCKS_PER_SEC /1000);
+}
 
 int
 main(int argc, char *argv[])
@@ -26,7 +32,13 @@ main(int argc, char *argv[])
 
   int fd = start_client(IP,PORT);
 
-  client_send("id_one\r\nid_two\r\nele_1\noption1\noption2\n\rele_2\nnice\r\n");
+  client_send(" \r\n \r\n");
+
+  delay(500);
+
+  char* response = client_read();
+
+  printf("Response:\n%s\n",response);  
   
   return 1;
 }
