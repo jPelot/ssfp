@@ -10,8 +10,11 @@ main()
   int sockfd;
   
   while(1) {
-    sockfd = server_listen(conn);
-    char *buff = read_fd(sockfd);
+    char *buff = server_listen(conn);
+
+    if(buff == NULL) {
+      continue;
+    }
 
     request_data *rd = new_request();
 

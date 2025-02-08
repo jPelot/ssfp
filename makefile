@@ -5,6 +5,9 @@ RM     = rm -f
 HEADERS = ssfp.h socket.h
 OBJECTS = ssfp.o socket.o
 
+LDFLAGS = -L/usr/local/ssl/lib
+LDLIBS = -lssl -lcrypto
+
 default: all
 
 all: ssfp-server ssfp-client
@@ -13,10 +16,10 @@ all: ssfp-server ssfp-client
 	gcc -c $< -o $@
 
 ssfp-server: ssfp-server.o $(OBJECTS)
-	$(CC) ssfp-server.o $(OBJECTS) -o ssfp-server
+	$(CC) ssfp-server.o $(OBJECTS) -o ssfp-server $(LDFLAGS) $(LDLIBS)
 
 ssfp-client: ssfp-client.o $(OBJECTS)
-	$(CC) ssfp-client.o $(OBJECTS) -o ssfp-client
+	$(CC) ssfp-client.o $(OBJECTS) -o ssfp-client $(LDFLAGS) $(LDLIBS)
 
 clean:
 	-rm -f *.o

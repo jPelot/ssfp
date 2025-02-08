@@ -2,9 +2,13 @@
 #define socket_h
 
 int start_server();
-int start_client(char *ip, int port);
-int server_listen(int sockfd);
-void client_send(int sockfd, char* message);
+char* server_listen(int sockfd);
+void server_send(char *str);
+void server_close(int socket_listen);
+
+int start_client(char *ip, char *port);
+void client_send(char* message);
+void client_close(int socket);
 char *read_fd(int fd);
 
 #endif // socket_h
