@@ -4,6 +4,301 @@
 
 #include "ssfp.h"
 
+SSFPResponse *SSFP_new_response()
+{
+  SSFPResponse *response = malloc(sizeof(SSFPResponse));
+  response->context = NULL;
+  response->session = NULL;
+  response->num_directives = 0;
+  response->types = NULL;
+  response->names = NULL;
+  response->ids = NULL;
+  response->text = NULL;
+  response->options = NULL;
+  response->element_types = NULL;
+
+  response->name_count = 0;
+  response->text_count = 0;
+  response->options_count = 0;
+  response->element_count = 0;
+  response->element_num_options = 0;
+  return response;
+}
+
+void SSFP_free_response(SSFPResponse *response)
+{
+  SSFPDirective *cur_directive;
+  free(response->context);
+  free(response->session);
+  /*
+  for(int i = 0; i < response->num_directives; i++) {
+    cur_directive = response->directives + (i*sizeof(SSFPDirective));
+    switch (cur_directive->type) {
+    case DTEXT:
+      free(cur_directive->text.string);
+      break;  
+    case DFORM:
+      free(cur_directive->form.id);
+      free(cur_directive->form.name);
+      break;
+    case DELEMENT:
+      free(cur_directive->element.data);
+      free(cur_directive->element.id);
+      free(cur_directive->element.name);
+      break;
+    }
+    free(cur_directive);
+  }
+  */
+  free(response);
+}
+
+/*
+ *  Copies string from **str to dest until the first instance of '\r'.
+ *  Increments *str. Returns 1 if string is empty, otherwise, 0;
+ */
+int
+next_line(char **str, char *dest)
+{
+  char *index;
+  int length;
+  
+  // If at end of string, return 1
+  if (**str == '\0') {
+    return 1;
+  }
+  // Calculate length of line
+  index = strchr(*str, '\r');
+  if (index == NULL) {
+    length = strlen(*str);
+  } else {
+    length = index - *str;
+  }
+
+  // Copy line to dest
+  memcpy(dest, *str, length);
+  dest[length] = '\0';
+  //Increment **str
+  *str += length;
+  if (**str != '\0') {
+    *str +=1;
+  }
+  if (**str == '\n') {
+    *str += 1;
+  }
+  return 0;
+}
+
+int
+next_subline(char **str, char *dest)
+{
+  char *index;
+  int length;
+  
+  // If at end of string, return 1
+  if (**str == '\0') {
+    return 1;
+  }
+  // Calculate length of line
+  index = strchr(*str, '\n');
+  if (index == NULL) {
+    length = strlen(*str);
+  } else {
+    length = index - *str;
+  }
+
+  // Copy line to dest
+  memcpy(dest, *str, length);
+  dest[length] = '\0';
+  //Increment **str
+  *str += length;
+  if (**str == '\n') {
+    *str += 1;
+  }
+  return 0;
+}
+
+int parse_directive(SSFPResponse *res, char *str) {
+  char **strptr = &str;
+  char *index;
+  char buffer[256];
+  DType dir_type;
+
+  next_subline(strptr, buffer);
+
+  if (buffer[0] == '%') {
+    dir_type = DTEXT;
+  } else if (buffer[0] == '&') {
+    dir_type = DFORM;
+  } else {
+    dir_type = DELEMENT;
+  }
+
+  if (dir_type == DTEXT) {
+    res->types[res->num_directives] = DTEXT;
+    int len = strlen(buffer+1);
+    res->text[res->text_count] = malloc(len+1);
+    strcpy(res->text[res->text_count], buffer+1);
+    res->num_directives++;
+    res->text_count++;
+    return 0;
+  }
+
+  if (dir_type == DFORM) {
+    res->types[res->num_directives] = DFORM;
+    char *c = strchr(buffer, ' ');
+    if(c == NULL) {
+      return 1;
+    }
+    *c = '\0';
+    res->ids[res->name_count] = malloc(strlen(buffer+1) + 1);
+    strcpy(res->ids[res->name_count],buffer+1);
+
+    int len = strlen(c+1);
+    if (len < 1) {
+      return 1;
+    }
+    res->names[res->name_count] = malloc(len+1);
+    strcpy(res->names[res->name_count], c+1);
+
+    res->num_directives++;
+    res->name_count++;
+    return 0;
+  }
+
+  char *c_index;
+  char *type, *id, *name;
+
+  if ((type = strtok(buffer, " ")) == NULL) {
+    return 1;
+  }
+  if ((id = strtok(NULL, " ")) == NULL) {
+    return 1;
+  }
+  if ((name = strtok(NULL, "\0")) == NULL) {
+    return 1;
+  }
+
+  element_type e_type;
+  if      (strcmp(type, "field") == 0) {e_type = FIELD;}
+  else if (strcmp(type, "area") == 0)  {e_type = AREA;}
+  else if (strcmp(type, "radio") == 0) {e_type = RADIO;}
+  else if (strcmp(type, "check") == 0) {e_type = CHECK;}
+  else if (strcmp(type, "submit") == 0){e_type = SUBMIT;}
+  else {return 1;}
+  res->types[res->num_directives] = DELEMENT;
+  res->element_types[res->element_count] = e_type;
+  res->names[res->name_count] = malloc(strlen(name)+1);
+  strcpy(res->names[res->name_count], name);
+  res->ids[res->name_count] = malloc(strlen(id) + 1);
+  strcpy(res->ids[res->name_count], id);
+
+  res->name_count++;
+  res->num_directives++;
+
+  if (e_type == FIELD || e_type == AREA) {
+    int len = strlen(*strptr);
+    res->text[res->text_count] = malloc(len+1);
+
+    strcpy(res->text[res->text_count], *strptr);
+    res->element_num_options[res->element_count] = -1;
+    res->text_count++;
+    res->element_count++;
+    printf("TEST: %s\n",res->text[res->text_count-1]);
+  }
+  else if (e_type == RADIO || e_type == CHECK) {
+    int num_options = 0;
+
+    while((next_subline(strptr, buffer)) == 0) {
+      num_options++;
+      char *c = strchr(buffer, ' ');
+      if (c == NULL) {return 1;}
+      *c = '\0';
+      int len = strlen(buffer);
+      res->option_ids[res->options_count] = malloc(len+1);
+      strcpy(res->option_ids[res->options_count], buffer);
+
+      len = strlen(c+1);
+      res->options[res->options_count] = malloc(len+1);
+      strcpy(res->options[res->options_count], c+1);
+
+      res->options_count++;
+    }
+    res->element_num_options[res->element_count] = num_options;
+    res->element_count++;
+  }
+
+  return 0;
+}
+
+int SSFP_parse_response(SSFPResponse *response, char *str) {
+  char **strptr = &str;
+  response->context = malloc(100);
+  response->session = malloc(100);
+  next_line(strptr, response->context);
+  next_line(strptr, response->session);
+
+  char line_buffer[256];
+
+  int index = 0;
+  int num_allocated = 10;
+
+  response->types = malloc(sizeof(DType) * 100);
+  response->names = malloc(sizeof(char*) * 100);
+  response->ids = malloc(sizeof(char*) * 100);
+  response->text = malloc(sizeof(char*) * 100);
+  response->options = malloc(sizeof(char*) * 100);
+  response->option_ids = malloc(sizeof(char*) * 100);
+  response->element_types = malloc(sizeof(element_type*) * 100);
+  response->element_num_options = malloc(sizeof(int)*100);
+
+  while(next_line(strptr, line_buffer) == 0) {
+    parse_directive(response, line_buffer);
+  }
+  return 0;
+}
+
+void
+SSFP_print_response(SSFPResponse *res)
+{
+  printf("CONTEXT: %s\nSESSION: %s\n", res->context, res->session);
+
+  int name_counter = 0;
+  int text_count = 0;
+  int options_count = 0;
+  int element_count = 0;
+  
+  for (int i = 0; i < res->num_directives; i++) {
+    if (res->types[i] == DTEXT) {
+      printf("TEXT: %s\n", res->text[text_count]);
+      text_count++;
+    }
+    else if (res->types[i] == DFORM) {
+      printf("FORM: %s | %s\n", res->ids[name_counter], res->names[name_counter]);
+      name_counter++;
+    }
+    else if (res->types[i] == DELEMENT) {
+      printf("ELEMENT: %s | %s\n", res->ids[name_counter], res->names[name_counter]);
+      element_type etype = res->element_types[element_count];
+      if (res->element_num_options[element_count] == -1) {
+        printf("--------------------\n");
+        printf("%s\n",res->text[text_count]);
+        printf("--------------------\n");
+        text_count++;
+      }
+      else {
+        for (int j = 0; j < res->element_num_options[element_count]; j++) {
+          printf(" |%s: %s\n", res->option_ids[options_count], res->options[options_count]);
+          options_count++;
+        }
+      }
+      
+      element_count++;
+      name_counter++;
+    }
+  }
+}
+
 
 form_element*
 new_form_element()
@@ -160,43 +455,6 @@ classify_element_type(char *str)
   return NONE;
 }
 
-/*
- *  Copies string from **str to dest until the first instance of '\r'.
- *  Increments *str. Returns 1 if string is empty, otherwise, 0;
- */
-int
-next_line(char **str, char *dest)
-{
-  char *index;
-  int length;
-  // Skip any empty lines
-  while(**str == '\r') {
-    *str += 1;
-    if (**str == '\n') {
-      *str += 1;
-    }
-  }
-  // If at end of string, return 1
-  if (**str == '\0') {
-    return 1;
-  }
-  // Calculate length of line
-  index = strchr(*str, '\r');
-  if (index == NULL) {
-    length = strlen(*str);
-  } else {
-    length = index - *str;
-  }
-  // Copy line to dest
-  memcpy(dest, *str, length);
-  dest[length] = '\0';
-  //Increment **str
-  *str += length;
-  if (**str == '\n') {
-    *str += 1;
-  }
-  return 0;
-}
 
 int
 next_segment(char **str, char *dest) {
@@ -281,7 +539,69 @@ parse_request(request_data *data, char *str)
   }
 
   return 0;
-  
+ 
+}
+
+Form*
+parse_form(char **str) {
+  Form *form = new_form();
+  char line[2000];
+  char *lineptr = (char *)line;
+  char buff[100];
+
+  if ((next_line(str, line))== 0) {
+    return NULL;
+  }
+
+  form->id = malloc(100);
+  if ((next_segment(&lineptr, form->id)) == 0) {
+    return NULL;
+  }
+
+  while (next_line(str, line) == 0) {
+    
+
+
+    if(**str == '&') break;
+  }
+
+  return form;
+}
+
+int
+parse_response_data(element **elements, char *str)
+{
+  char **strptr;
+  char buffer[100];  
+  strptr = &str;
+
+  // Get the context id  
+  if(next_line(strptr, buffer) == 1) {
+    return 1;
+  }
+  // Get the session id
+  if(next_line(strptr, buffer) == 1) {
+    return 1;
+  }
+
+  elements = malloc(sizeof(element)*20);
+
+  int index = 0;
+
+  char curForm[100];
+  /*
+  while(next_line(strptr, buffer) == 0) {
+    if(buffer[0] == '&') {
+      memcpy(curForm, buffer[1]);
+      continue;
+    }
+    char *ptr = strtok(buffer,"_");
+    
+
+    index++;
+  }*/
+
+  return 0;  
 }
 
 

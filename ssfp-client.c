@@ -38,6 +38,8 @@ main(int argc, char *argv[])
 
   char* response = client_read();
 
+  response_data *rd = 
+
   printf("Response:\n%s\n",response);  
   
   return 1;
