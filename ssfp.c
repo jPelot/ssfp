@@ -5,46 +5,49 @@
 #include "ssfp.h"
 #include "strarray.h"
 
-SSFPResponse *SSFP_new_response()
+
+SSFPResponse *SSFPResponse_create()
 {
   SSFPResponse *res = malloc(sizeof(SSFPResponse));
+  
   res->context = NULL;
   res->session = NULL;
+  res->forms = malloc(sizeof(SSFPForm*) * 100);
+  res->num_forms = 0;
 
-  res->names = NULL;
-  res->ids = NULL;
-  res->text = NULL;
-  res->options = NULL;
-  res->option_ids = NULL;
-
-  res->types = NULL;
-  res->element_types = NULL;
-  res->element_num_options = NULL;
-
-  res->num_directives = 0;
-  res->element_count = 0;
-  res->element_num_options = 0;
+  res->types = IntArray_create();
+  res->messages = StrArray_create();
   
   return res;
 }
 
 void SSFP_free_response(SSFPResponse *res)
 {
-  SSFPDirective *cur_directive;
-
-  StrArray_destroy(res->names);
-  StrArray_destroy(res->ids);
-  StrArray_destroy(res->text);
-  StrArray_destroy(res->options);
-  StrArray_destroy(res->option_ids);
-    
   free(res->context);
   free(res->session);
-  free(res->types);
-  free(res->element_types);
-  free(res->element_num_options);
-  
+  for (int i = 0; i < res->num_forms; i++) {
+    //SSFPForm_destroy(res->forms[i]);
+  }
+  free(res->forms);  
   free(res);
+}
+
+
+SSFPForm*
+SSFPForm_create() {
+  SSFPForm *form = malloc(sizeof(SSFPForm));
+
+  form->element_types = IntArray_create();
+  form->num_options   = IntArray_create();
+  form->options_index = IntArray_create();
+  form->element_names = StrArray_create();
+  form->element_ids   = StrArray_create();
+  form->element_texts = StrArray_create();
+  form->option_names  = StrArray_create();
+  form->option_ids    = StrArray_create();
+  form->submit_ids    = StrArray_create();
+  form->submit_names  = StrArray_create();
+  return form;
 }
 
 /*
@@ -88,7 +91,7 @@ next_subline(char **str, char *dest)
 {
   char *index;
   int length;
-  
+
   // If at end of string, return 1
   if (**str == '\0') {
     return 1;
@@ -127,30 +130,43 @@ int parse_directive(SSFPResponse *res, char *str) {
   }
 
   if (dir_type == DTEXT) {
-    res->types[res->num_directives] = DTEXT;    
-    StrArray_add(res->text, str+1);
-    res->num_directives++;
+    IntArray_add(res->types, DTEXT);
+    StrArray_add(res->messages, str+1);
     return 0;
   }
   
   next_subline(strptr, buffer);
 
   if (dir_type == DFORM) {
-    res->types[res->num_directives] = DFORM;
+    SSFPForm *form = SSFPForm_create();
+    res->forms[res->num_forms++] = form;
+    
+    IntArray_add(res->types, DFORM);
+
     char *c = strchr(buffer, ' ');
     if(c == NULL) {
       return 1;
     }
     *c = '\0';
-    StrArray_add(res->ids, buffer+1);
+    
+    form->id = malloc(strlen(buffer+1) +1);
+    strcpy(form->id, buffer+1);
+    
     int len = strlen(c+1);
     if (len < 1) {
       return 1;
     }
-    StrArray_add(res->names,c+1);
-    res->num_directives++;
+    form->name = malloc(strlen(c+1) + 1);
+    strcpy(form->name, c+1);
+    
     return 0;
   }
+
+  if (res->num_forms == 0) {
+    return 1;
+  }
+
+  SSFPForm *form = res->forms[res->num_forms - 1];
 
   char *c_index;
   char *type, *id, *name;
@@ -172,18 +188,21 @@ int parse_directive(SSFPResponse *res, char *str) {
   else if (strcmp(type, "check") == 0) {e_type = CHECK;}
   else if (strcmp(type, "submit") == 0){e_type = SUBMIT;}
   else {return 1;}
-  res->types[res->num_directives] = DELEMENT;
-  res->element_types[res->element_count] = e_type;
 
-  StrArray_add(res->names, name);
-  StrArray_add(res->ids, id);
+  if (e_type == SUBMIT) {
+    StrArray_add(form->submit_names, name);
+    StrArray_add(form->submit_ids, id);
+    return 0;
+  }
 
-  res->num_directives++;
+  IntArray_add(form->element_types, e_type);
+
+  StrArray_add(form->element_names, name);
+  StrArray_add(form->element_ids, id);
 
   if (e_type == FIELD || e_type == AREA) {
-    StrArray_add(res->text, *strptr);
-    res->element_num_options[res->element_count] = -1;
-    res->element_count++;
+    StrArray_add(form->element_texts, *strptr);
+    IntArray_add(form->num_options, -1);
   }
   else if (e_type == RADIO || e_type == CHECK) {
     int num_options = 0;
@@ -193,15 +212,10 @@ int parse_directive(SSFPResponse *res, char *str) {
       char *c = strchr(buffer, ' ');
       if (c == NULL) {return 1;}
       *c = '\0';
-      StrArray_add(res->option_ids, buffer);
-      StrArray_add(res->options, c+1);
+      StrArray_add(form->option_ids, buffer);
+      StrArray_add(form->option_names, c+1);
     }
-    res->element_num_options[res->element_count] = num_options;
-    res->element_count++;
-  } else {
-
-    //res->element_num_options[res->element_count] = -1;
-    //res->element_count++;
+    IntArray_add(form->num_options, num_options);
   }
 
   return 0;
@@ -218,18 +232,7 @@ int SSFP_parse_response(SSFPResponse *response, char *str) {
 
   int index = 0;
   int num_allocated = 10;
-
-  response->types = malloc(sizeof(DType) * 100);
   
-  response->names = StrArray_create();
-  response->ids = StrArray_create();
-  response->text = StrArray_create();
-  response->options = StrArray_create();
-  response->option_ids = StrArray_create();
-  
-  response->element_types = malloc(sizeof(element_type*) * 100);
-  response->element_num_options = malloc(sizeof(int)*100);
-
   while(next_line(strptr, line_buffer) == 0) {
     parse_directive(response, line_buffer);
   }
@@ -263,40 +266,119 @@ print_many(char *str, int num) {
 }
 
 
+/*
+void
+SSFP_next(SSFPResponse *res) {
+  DType cur_type;
+  while(!IntArray_at_end(res->directive_types)) {
+    cur_type = IntArray_next(res->directive_types);
+    switch (cur_type) {
+    case DTEXT:
+      StrArray_next(res->messages);
+      break;
+    case DFORM:
+      StrArray_next(res->form_names);
+      StrArray_next(res->form_ids);
+      break;
+    case DELEMENT:
+      StrArray_next(res->element_names);
+      StrArray_next(res->element_ids);
+      int options = IntArray_next(res->element_num_options);
+      if (options == -1) {
+        StrArray_next(res->element_texts);
+      }
+      else {
+        for(int i = 0; i < options; i++) {
+          StrArray_next(res->options);
+          StrArray_next(res->option_ids);
+        }
+      }
+      break;
+    }
+  }
+}
+*/
+
+void
+print_form(SSFPForm *form) {
+
+  int form_name_length = strlen(form->name);
+  printf("\n====%s====\n\n", form->name);
+
+  int type;
+  for (int i = 0; i < IntArray_length(form->element_types); i++) {
+    type = IntArray_get(form->element_types, i);
+    switch (type) {
+    case FIELD:
+      printf("%s: %s\n", StrArray_next(form->element_names),
+                         StrArray_next(form->element_texts));
+      break;    
+    }
+  }
+  printf("\n");
+  for (int i = 0; i < StrArray_length(form->submit_ids); i++) {
+    print_boxed(StrArray_get(form->submit_names, i));
+  }
+
+  print_many("=", form_name_length + 8);
+  printf("\n");
+}
+
 void
 SSFP_print_response(SSFPResponse *res)
 {
   //printf("CONTEXT: %s\nSESSION: %s\n", res->context, res->session);
 
-  int element_count = 0;
+  int form_count = 0;
   int form_name_length = 0;
-  
-  for (int i = 0; i < res->num_directives; i++) {
-    if (res->types[i] == DTEXT) {
+
+  int type;
+
+  while (!IntArray_at_end(res->types)) {
+    type = IntArray_next(res->types);
+    switch (type) {
+    case DTEXT:
       printf("\n");
-      print_string_indent(StrArray_next(res->text), "|");
+      print_string_indent(StrArray_next(res->messages), "|");
+      break;
+    case DFORM:
+      print_form(res->forms[form_count]);
+      break;
     }
-    else if (res->types[i] == DFORM) {
-      form_name_length = strlen(StrArray_cur(res->names));
-      printf("\n====%s====\n\n", StrArray_next(res->names));
+  }
+  /*
+  while (StrArray_cur(res->directive_types) != NULL) {
+
+    if (StrArray_cmp(res->directive_types, "message")) {
+      printf("message\n");
+      print_string_indent(StrArray_next(res->messages), "|");
     }
-    else if (res->types[i] == DELEMENT) {
-      element_type etype = res->element_types[element_count];
-      if (res->element_types[element_count] == FIELD) {
-        printf("%s: %s\n", StrArray_next(res->names),StrArray_next(res->text));
-      } else if (res->element_types[element_count] == AREA) {
-        printf("%s:\n", StrArray_cur(res->names));
+    else if (StrArray_cmp(res->directive_types, "form")) {
+      form_name_length = strlen(StrArray_cur(res->form_names));
+      printf("\n====%s====\n\n", StrArray_next(res->form_names));
+    }
+    else if (StrArray_cmp(res->directive_types, "element")) {
+      //element_type etype = res->element_types[element_count];
+      // Field Elements
+      if (StrArray_cmp(res->element_types, "field")) {
+        printf("%s: %s\n", StrArray_next(res->element_names),StrArray_next(res->element_texts));
+      // Area ELements
+      } else if (StrArray_cmp(res->element_types, "area")) {
+        printf("%s:\n", StrArray_cur(res->element_names));
         printf("--------------------\n");
-        printf("%s\n", StrArray_cur(res->text));
+        printf("%s\n", StrArray_cur(res->element_texts));
         printf("--------------------\n");
-      } else if (etype == RADIO || etype == CHECK) {
-        printf("%s:\n", StrArray_next(res->names));
+      // Radio and Check Elements
+      } else if (StrArray_cmp(res->element_types, "radio")
+              || StrArray_cmp(res->element_types, "check")) {
+        printf("%s:\n", StrArray_next(res->element_names));
         for (int j = 0; j < res->element_num_options[element_count]; j++) {
           printf(" |%s: %s\n", StrArray_next(res->option_ids), StrArray_next(res->options));
         }
-      } else if (etype == SUBMIT) {
+      // Submit elements
+      } else if (StrArray_cmp(res->element_types, "submit")) {
           printf("\n");
-          print_boxed(StrArray_next(res->names));
+          print_boxed(StrArray_next(res->element_names));
       }
 
       element_count++;
@@ -304,13 +386,114 @@ SSFP_print_response(SSFPResponse *res)
   }
   print_many("=", form_name_length+8);
   printf("\n");
+  */
 }
+
+/*
+void
+SSFP_begining(SSFPResponse *res)
+{
+  IntArray_start(res->directive_types);
+  StrArray_begining(res->form_names);
+  StrArray_begining(res->form_ids);
+  StrArray_begining(res->messages);
+  IntArray_start(res->element_types);
+  StrArray_begining(res->element_names);
+  StrArray_begining(res->element_ids);
+  StrArray_begining(res->element_texts);
+  StrArray_begining(res->options);
+  StrArray_begining(res->option_ids);
+  IntArray element_num_options;
+}
+*/
+
+
+/*
+void
+SSFP_next(SSFPResponse *res) {
+  DType cur_type;
+  if (res->directive_index < res->num_directives) {
+    cur_type = res->types[res->directive_index];
+
+    if (cur_type == DTEXT) {
+      StrArray_next(res->text);
+    }
+
+    if (cur_type == DFORM) {
+      StrArray_next(res->names);
+      StrArray_next(res->ids);
+    }
+
+    if (cur_type == DELEMENT) {
+      StrArray_next(res->names);
+      StrArray_next(res->ids);
+      int options = res->element_num_options[res->element_index++];
+      if (options == -1) {
+        StrArray_next(res->text);
+      }
+      else {
+        for(int i = 0; i < options; i++) {
+          StrArray_next(res->options);
+          StrArray_next(res->option_ids);
+        }
+      }
+    }
+    res->directive_index++;
+  }
+}
+*/
 
 char*
-SSFP_prompt(SSFPResponse *res) {
-  return " \r\n \r\n";
-}
+SSFP_prompt(SSFPResponse *res)
+{
+  StrArray arr = StrArray_create();
+  StrArray_add(arr, " ");   //Context 0
+  StrArray_add(arr, "\r\n");
+  StrArray_add(arr, " ");   //Session 2
+  StrArray_add(arr, "\r\n");
+  StrArray_add(arr, " ");   //Form id 3
+  StrArray_add(arr, "\r\n");
+  StrArray_add(arr, " ");  // Submit id 4
+  StrArray_add(arr, "\r\n");
 
+  int form_index = 0;
+
+  char inputbuffer[200];
+
+  while (form_index < 1 || form_index > res->num_forms) {
+    printf("Select form to enter (1-%d): ", res->num_forms);
+    scanf("%d", &form_index);
+  }
+  form_index -= 1;
+
+  SSFPForm * form = res->forms[form_index];  
+
+  StrArray_set(arr,3,form->id);
+
+  system("clear");  
+  printf("====%s====\n",form->name);
+  scanf("%*c");
+  const char* id;
+  const char* name;
+ 
+  for (int i = 0; i < StrArray_length(form->element_names); i++) {
+
+    id = StrArray_get(form->element_ids, i);
+    name = StrArray_get(form->element_names, i);
+
+    StrArray_add(arr, id);
+    StrArray_add(arr,"\n");
+    printf("%s: ",name);
+    int chars;
+    scanf("%s%n",inputbuffer, &chars);
+
+    StrArray_add(arr, inputbuffer);
+    StrArray_add(arr, "\r\n");  
+  }
+
+  system("clear");
+  return StrArray_combine(arr);
+}
 
 
 form_element*

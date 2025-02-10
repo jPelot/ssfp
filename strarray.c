@@ -46,6 +46,26 @@ StrArray_add(StrArray arr, const char *str)
   arr->length++;
 }
 
+const char*
+StrArray_get(StrArray arr, int index)
+{
+  if (index < 0 || index >= arr->length) {
+    return NULL;
+  }
+  return arr->arr[index];
+}
+
+void
+StrArray_set(StrArray arr, int index, const char *str)
+{
+  if (index < 0 || index >=arr->length) {
+    return;
+  }
+  free(arr->arr[index]);
+  arr->arr[index] = malloc(strlen(str)+1);
+  strcpy(arr->arr[index], str);
+}
+
 int
 StrArray_length(StrArray arr)
 {
@@ -71,4 +91,29 @@ StrArray_next(StrArray arr) {
   const char* out = StrArray_cur(arr);
   if (out != NULL) arr->index++;
   return out;
+}
+
+int
+StrArray_cmp(StrArray arr, const char *str) {
+  const char *this;
+  this = StrArray_cur(arr);
+  if (this == NULL) return 0;
+  return strcmp(this, str);
+}
+
+char *
+StrArray_combine(StrArray arr) {
+  int total_length = 0;
+  char *combined;
+  char *p;
+  for(int i = 0; i < arr->length; i++) {
+    total_length += strlen(arr->arr[i]);
+  }
+  combined = malloc(total_length + 1);
+  p = combined;
+  for(int i = 0; i < arr->length; i++) {
+    strcpy(p,arr->arr[i]);
+    p += strlen(arr->arr[i]);
+  }
+  return combined;
 }

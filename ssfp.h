@@ -2,6 +2,7 @@
 #define ssfp_h
 
 #include "strarray.h"
+#include "intarray.h"
 
 typedef enum {
   NONE,
@@ -93,11 +94,12 @@ typedef struct {
   char *string;  
 } SSFPText;
 
+/*
 typedef struct {
   char *id;
   char *name;
 } SSFPForm;
-
+*/
 typedef struct {
   char *id;
   char *name;
@@ -127,28 +129,45 @@ typedef struct {
 
 
 typedef struct {
+  char *id;
+  char *name;
+
+  IntArray element_types;
+  IntArray num_options;
+  IntArray options_index;
+
+  StrArray element_names;
+  StrArray element_ids;
+  StrArray element_texts;
+  StrArray option_names;
+  StrArray option_ids;
+
+  int num_submits;
+  StrArray submit_ids;
+  StrArray submit_names;
+} SSFPForm;
+
+
+typedef struct {
   // Header
   char *context;
   char *session;
   // Data
-  int num_directives;
-  DType *types;
-  
-  StrArray names;
-  StrArray ids;
-  StrArray text;
-  StrArray options;
-  StrArray option_ids;
+  int num_forms;
+  SSFPForm **forms;
 
-  int element_count;
-  element_type *element_types;
-  int *element_num_options;
+  IntArray types;
+
+  StrArray messages;
+
 } SSFPResponse;
 
 
 
-SSFPResponse *SSFP_new_response();
-void SSFP_free_response(SSFPResponse *response);
+
+
+SSFPResponse *SSFPResponse_create();
+void SSFPResponse_destroy(SSFPResponse *response);
 int SSFP_parse_response(SSFPResponse *SSFPResponse, char *str);
 void SSFP_print_response(SSFPResponse *res);
 char *SSFP_prompt(SSFPResponse *res);

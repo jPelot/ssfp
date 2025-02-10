@@ -46,31 +46,28 @@ main(int argc, char *argv[])
   char* data = client_read();
   client_close(fd);
 
-  SSFPResponse *response = SSFP_new_response();
+  SSFPResponse *response = SSFPResponse_create();
   SSFP_parse_response(response, data);
   SSFP_print_response(response);
-  char* message = SSFP_prompt(response);
-  SSFP_free_response(response);
+  //SSFP_free_response(response);
 
   char in_buffer[200];
   
   while(1) {
-    printf("[Enter]");
-    scanf("%*c");
-    system("clear");
 
+    char* message = SSFP_prompt(response);
     fd = start_client(IP,PORT);
     if (fd == 0) continue;
     
-    client_send(" \r\n \r\n");
+    client_send(message);
     delay(50);
     char* data = client_read();
     client_close(fd);
 
-    
-    response = SSFP_new_response();
+    response = SSFPResponse_create();
     SSFP_parse_response(response, data);
     SSFP_print_response(response);
+    //SSFP_free_response(response);
   }
   
   
