@@ -1,6 +1,8 @@
 #ifndef ssfp_h
 #define ssfp_h
 
+#include "strarray.h"
+
 typedef enum {
   NONE,
   FIELD,
@@ -125,25 +127,22 @@ typedef struct {
 
 
 typedef struct {
+  // Header
   char *context;
   char *session;
+  // Data
   int num_directives;
   DType *types;
   
-  int name_count;
-  char **names;
-  char **ids;
+  StrArray names;
+  StrArray ids;
+  StrArray text;
+  StrArray options;
+  StrArray option_ids;
 
   int element_count;
   element_type *element_types;
   int *element_num_options;
-
-  int text_count;
-  char **text;
-
-  int options_count;
-  char **options;
-  char **option_ids;
 } SSFPResponse;
 
 

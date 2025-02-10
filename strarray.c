@@ -58,9 +58,16 @@ StrArray_begining(StrArray arr)
 }
 
 const char*
-StrArray_next(StrArray arr) {
+StrArray_cur(StrArray arr) {
   if (arr->index >= arr->length) {
     return NULL;
   }
-  return arr->arr[arr->index++];
+  return arr->arr[arr->index];
+}
+
+const char*
+StrArray_next(StrArray arr) {
+  const char* out = StrArray_cur(arr);
+  if (out != NULL) arr->index++;
+  return out;
 }

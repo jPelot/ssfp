@@ -10,6 +10,7 @@ int      StrArray_length(StrArray arr);
 
 // Iteration functions
 void        StrArray_begining(StrArray arr);
+const char* StrArray_cur(StrArray arr);
 const char* StrArray_next(StrArray arr);
 
 #endif // strarray_h
