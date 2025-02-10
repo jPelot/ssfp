@@ -51,7 +51,7 @@ Parser_line(Parser p)
 }
 
 char*
-Parser_field(Parser p, int index)
+Parser_field(Parser p, int index, int num)
 {
   char *temp, *ptr, *out;
   const char *field;
@@ -72,7 +72,7 @@ Parser_field(Parser p, int index)
     return NULL;
   }
 
-  if (index >= 2) {
+  if (index >= num-1) {
     int offset = field - temp;
     field = Parser_line(p)+offset;
   }

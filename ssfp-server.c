@@ -19,9 +19,9 @@ main()
       continue;
     }
 
-    request_data *rd = new_request();
+    SSFPRequest *req = SSFPRequest_create();
 
-    parse_request(rd, buff);
+    parse_request(req, buff);
     
     int nums[] = {-1,-1};
     int count = 0;

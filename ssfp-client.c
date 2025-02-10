@@ -48,7 +48,7 @@ main(int argc, char *argv[])
 
   SSFPResponse *response = SSFPResponse_create();
   SSFP_parse_response(response, data);
-  SSFP_print_response(response);
+  SSFPResponse_print(response);
   //SSFP_free_response(response);
 
   char in_buffer[200];
@@ -66,7 +66,7 @@ main(int argc, char *argv[])
 
     response = SSFPResponse_create();
     SSFP_parse_response(response, data);
-    SSFP_print_response(response);
+    SSFPResponse_print(response);
     //SSFP_free_response(response);
   }
   
