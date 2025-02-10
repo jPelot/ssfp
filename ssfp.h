@@ -1,4 +1,4 @@
-// #ifndef ssfp_h
+#ifndef ssfp_h
 #define ssfp_h
 
 typedef enum {

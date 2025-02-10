@@ -338,6 +338,12 @@ SSFP_print_response(SSFPResponse *res)
   printf("\n");
 }
 
+char*
+SSFP_prompt(SSFPResponse *res) {
+  return " \r\n \r\n";
+}
+
+
 
 form_element*
 new_form_element()
