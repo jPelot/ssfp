@@ -5,8 +5,6 @@
 #include "parser.h"
 #include "strarray.h"
 
-
-
 void
 print_many(char *str, int num)
 {
@@ -120,8 +118,8 @@ parse_directive(SSFPResponse *res, Parser p)
     form = SSFPForm_create();
     res->forms[res->num_forms++] = form;
     IntArray_add(res->types, DFORM);
-    form->id = Parser_field(p, 0, 2)+1;
-    form->name = Parser_field(p, 1, 2);
+    form->id = Parser_field(p, 0, 0)+1;
+    form->name = Parser_field(p, 1, 1);
     return 0;
   }
 
@@ -131,9 +129,9 @@ parse_directive(SSFPResponse *res, Parser p)
 
   form = res->forms[res->num_forms - 1];
   
-  if ((type = Parser_field(p,0,3)) == NULL) return 1;
-  if ((id   = Parser_field(p,1,3)) == NULL) return 1;
-  if ((name = Parser_field(p,2,3)) == NULL) return 1;
+  if ((type = Parser_field(p,0,0)) == NULL) return 1;
+  if ((id   = Parser_field(p,1,0)) == NULL) return 1;
+  if ((name = Parser_field(p,2,1)) == NULL) return 1;
 
   if      (strcmp(type, "field")  == 0) e_type = FIELD;
   else if (strcmp(type, "area")   == 0) e_type = AREA;
@@ -174,7 +172,8 @@ parse_directive(SSFPResponse *res, Parser p)
   return 0;
 }
 
-int SSFP_parse_response(SSFPResponse *response, char *str) {
+int SSFP_parse_response(SSFPResponse *response, char *str)
+{
   Parser p = Parser_create(str);
   response->context = malloc(100);
   response->session = malloc(100);
@@ -188,12 +187,9 @@ int SSFP_parse_response(SSFPResponse *response, char *str) {
   return 0;
 }
 
-
-
-
 void
-SSFPForm_print(SSFPForm *form) {
-
+SSFPForm_print(SSFPForm *form)
+{
   int form_name_length = strlen(form->name);
   printf("\n====%s====\n\n", form->name);
 
@@ -217,7 +213,8 @@ SSFPForm_print(SSFPForm *form) {
 }
 
 void
-SSFPResponse_print(SSFPResponse *res) {
+SSFPResponse_print(SSFPResponse *res)
+{
   int form_counter = 0;
   StrArray_begining(res->messages);
 
@@ -225,7 +222,6 @@ SSFPResponse_print(SSFPResponse *res) {
     if (IntArray_get(res->types, i) == DTEXT) {
       printf("\n");
       print_string_indent(StrArray_next(res->messages), "|");
-      printf("\n");
     } else {
       SSFPForm_print(res->forms[form_counter++]);
     }
@@ -293,7 +289,7 @@ parse_request_element(SSFPForm *form, Parser p, SSFPForm *res_form)
   int e_type = NONE;
   StrArray option_ids, option_names;
   
-  if ((id   = Parser_field(p,0,1)) == NULL) return 1;
+  if ((id   = Parser_field(p,0,0)) == NULL) return 1;
 
   for(int i = 0; i < StrArray_length(res_form->element_ids); i++) {
     if (strcmp(StrArray_get(res_form->element_ids, i), id) == 0) {
@@ -363,6 +359,4 @@ parse_request(SSFPRequest *req, char *str, SSFPResponse *res)
   }
 
   return 0;
- 
 }
-

@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "strarray.h"
@@ -51,9 +52,9 @@ Parser_line(Parser p)
 }
 
 char*
-Parser_field(Parser p, int index, int num)
+Parser_field(Parser p, int index, int include_rest)
 {
-  char *temp, *ptr, *out;
+  char *temp, *ptr, *out, *base;
   const char *field;
 
   temp = malloc(strlen(Parser_line(p))+1);
@@ -62,24 +63,23 @@ Parser_field(Parser p, int index, int num)
   if (ptr != NULL) {
     *ptr = '\0';
   }
-
-  field = strtok(temp, " ");
-
+  ptr = temp;
   for(int i = 0; i < index; i++) {
-    field = strtok(NULL, " ");
+    ptr = strchr(ptr, ' ');
+    if (ptr == NULL) {
+      return NULL;
+    }
+    ptr++;
   }
-  if (field == NULL) {
-    return NULL;
+  base = ptr;
+  if (!include_rest) {
+    ptr = strchr(base, ' ');
+    if (ptr != NULL) {
+      *ptr = '\0';
+    }
   }
-
-  if (index >= num-1) {
-    int offset = field - temp;
-    field = Parser_line(p)+offset;
-  }
-  
-  out = malloc(strlen(field)+1);
-  strcpy(out, field);
-  free(temp);
+  out = malloc(strlen(out));
+  strcpy(out, base);
   return out;
 }
 
