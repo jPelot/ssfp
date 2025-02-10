@@ -1,4 +1,4 @@
-#ifndef ssfp_h
+// #ifndef ssfp_h
 #define ssfp_h
 
 typedef enum {
@@ -152,7 +152,7 @@ SSFPResponse *SSFP_new_response();
 void SSFP_free_response(SSFPResponse *response);
 int SSFP_parse_response(SSFPResponse *SSFPResponse, char *str);
 void SSFP_print_response(SSFPResponse *res);
-
+char *SSFP_prompt(SSFPResponse *res);
 
 
 request_data *new_request();

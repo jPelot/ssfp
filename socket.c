@@ -108,7 +108,7 @@ start_client(char* hostname, char *port)
     return 1;
   }
 
-  printf("Configuring remote address...\n");
+  //printf("Configuring remote address...\n");
   struct addrinfo hints;
   memset(&hints, 0, sizeof(hints));
   hints.ai_socktype = SOCK_STREAM;
@@ -118,16 +118,16 @@ start_client(char* hostname, char *port)
     return 1;
   }
 
-  printf("Remote address is: ");
+  //printf("Remote address is: ");
   char address_buffer[100];
   char service_buffer[100];
   getnameinfo(peer_address->ai_addr, peer_address->ai_addrlen,
               address_buffer, sizeof(address_buffer),
             service_buffer, sizeof(service_buffer),
           NI_NUMERICHOST);
-  printf("%s %s\n", address_buffer, service_buffer);
+  //printf("%s %s\n", address_buffer, service_buffer);
 
-  printf("Creating socket...\n");
+  //printf("Creating socket...\n");
   int server;
   server = socket(peer_address->ai_family,
                   peer_address->ai_socktype,
@@ -137,7 +137,7 @@ start_client(char* hostname, char *port)
     return 1;
   }
 
-  printf("Connecting...\n");
+  //printf("Connecting...\n");
   if (connect(server,
               peer_address->ai_addr,
             peer_address->ai_addrlen)) {
@@ -145,7 +145,7 @@ start_client(char* hostname, char *port)
     return 1;
   }
   freeaddrinfo(peer_address);
-  printf("Connected.\n\n");
+  //printf("Connected.\n\n");
 
   SSL *ssl = SSL_new(ctx);
   if (!ctx) {
@@ -166,7 +166,7 @@ start_client(char* hostname, char *port)
     return 1;
   }
 
-  printf("SSL/TLS using %s\n", SSL_get_cipher(ssl));
+  //printf("SSL/TLS using %s\n", SSL_get_cipher(ssl));
 
   X509 *cert = SSL_get_peer_certificate(ssl);
 
@@ -263,7 +263,7 @@ void server_close(int socket_listen) {
 void 
 client_close(int socket)
 {
-  printf("Closing socket...");
+  //printf("Closing socket...");
   SSL_shutdown(client_ssl);
   close(socket);
   SSL_free(client_ssl);

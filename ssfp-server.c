@@ -31,7 +31,7 @@ main()
       }
     }
 
-    char response[] = "calc\r\n \r\n&number Number\nfield num1 Number One\r\n";
+    char response[] = "calc\r\n \r\n%Number adder:\nEnter in 2 numbers, and we'll add 'em!\r\n&calc Calculator\r\nfield num1 Number One\r\nfield num2 Number Two\r\nsubmit add Add!\r\n";
     server_send(response);
 
     free(buff);

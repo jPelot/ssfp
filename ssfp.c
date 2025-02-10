@@ -124,11 +124,9 @@ int parse_directive(SSFPResponse *res, char *str) {
   char buffer[256];
   DType dir_type;
 
-  next_subline(strptr, buffer);
-
-  if (buffer[0] == '%') {
+  if (str[0] == '%') {
     dir_type = DTEXT;
-  } else if (buffer[0] == '&') {
+  } else if (str[0] == '&') {
     dir_type = DFORM;
   } else {
     dir_type = DELEMENT;
@@ -136,13 +134,15 @@ int parse_directive(SSFPResponse *res, char *str) {
 
   if (dir_type == DTEXT) {
     res->types[res->num_directives] = DTEXT;
-    int len = strlen(buffer+1);
+    int len = strlen(str+1);
     res->text[res->text_count] = malloc(len+1);
-    strcpy(res->text[res->text_count], buffer+1);
+    strcpy(res->text[res->text_count], str+1);
     res->num_directives++;
     res->text_count++;
     return 0;
   }
+  
+  next_subline(strptr, buffer);
 
   if (dir_type == DFORM) {
     res->types[res->num_directives] = DFORM;
@@ -204,7 +204,6 @@ int parse_directive(SSFPResponse *res, char *str) {
     res->element_num_options[res->element_count] = -1;
     res->text_count++;
     res->element_count++;
-    printf("TEST: %s\n",res->text[res->text_count-1]);
   }
   else if (e_type == RADIO || e_type == CHECK) {
     int num_options = 0;
@@ -226,6 +225,10 @@ int parse_directive(SSFPResponse *res, char *str) {
     }
     res->element_num_options[res->element_count] = num_options;
     res->element_count++;
+  } else {
+
+    //res->element_num_options[res->element_count] = -1;
+    //res->element_count++;
   }
 
   return 0;
@@ -259,44 +262,80 @@ int SSFP_parse_response(SSFPResponse *response, char *str) {
 }
 
 void
+print_string_indent(char *str, char *indent) {
+  char *strptr = strtok(str, "\n");
+  printf("%s%s\n",indent,strptr);
+  while ((strptr = strtok(NULL, "\n")) != NULL) {
+    printf("%s%s\n",indent,strptr);
+  }
+}
+
+void
+print_boxed(char *str) {
+  int len = strlen(str);
+  printf("+");
+  for(int i = 0; i < len + 2; i++) printf("-");
+  printf("+\n| %s |\n+",str);
+  for(int i = 0; i < len + 2; i++) printf("-");
+  printf("+\n");
+}
+
+void
+print_many(char *str, int num) {
+  for (int i = 0; i < num; i++) printf("%s", str);
+}
+
+
+void
 SSFP_print_response(SSFPResponse *res)
 {
-  printf("CONTEXT: %s\nSESSION: %s\n", res->context, res->session);
+  //printf("CONTEXT: %s\nSESSION: %s\n", res->context, res->session);
 
   int name_counter = 0;
   int text_count = 0;
   int options_count = 0;
   int element_count = 0;
+  int form_name_length = 0;
   
   for (int i = 0; i < res->num_directives; i++) {
     if (res->types[i] == DTEXT) {
-      printf("TEXT: %s\n", res->text[text_count]);
+      printf("\n");
+      print_string_indent(res->text[text_count], "|");
       text_count++;
     }
     else if (res->types[i] == DFORM) {
-      printf("FORM: %s | %s\n", res->ids[name_counter], res->names[name_counter]);
+      form_name_length = strlen(res->names[name_counter]);
+      printf("\n====%s====\n\n", res->names[name_counter]);
       name_counter++;
     }
     else if (res->types[i] == DELEMENT) {
-      printf("ELEMENT: %s | %s\n", res->ids[name_counter], res->names[name_counter]);
       element_type etype = res->element_types[element_count];
-      if (res->element_num_options[element_count] == -1) {
+      if (res->element_types[element_count] == FIELD) {
+        printf("%s: %s\n", res->names[name_counter],res->text[text_count]);
+        text_count++;
+      } else if (res->element_types[element_count] == AREA) {
+        printf("%s:\n", res->names[name_counter]);
         printf("--------------------\n");
         printf("%s\n",res->text[text_count]);
         printf("--------------------\n");
         text_count++;
-      }
-      else {
+      } else if (etype == RADIO || etype == CHECK) {
+        printf("%s:\n", res->names[name_counter]);
         for (int j = 0; j < res->element_num_options[element_count]; j++) {
           printf(" |%s: %s\n", res->option_ids[options_count], res->options[options_count]);
           options_count++;
         }
+      } else if (etype == SUBMIT) {
+          printf("\n");
+          print_boxed(res->names[name_counter]);
       }
-      
+
       element_count++;
       name_counter++;
     }
   }
+  print_many("=", form_name_length+8);
+  printf("\n");
 }
 
 
