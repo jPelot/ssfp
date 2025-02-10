@@ -41,7 +41,7 @@ main(int argc, char *argv[])
 
   client_send(" \r\n \r\n");
 
-  delay(500);
+  delay(50);
 
   char* data = client_read();
   client_close(fd);
@@ -50,6 +50,7 @@ main(int argc, char *argv[])
   SSFP_parse_response(response, data);
   SSFP_print_response(response);
   char* message = SSFP_prompt(response);
+  SSFP_free_response(response);
 
   char in_buffer[200];
   
@@ -59,12 +60,17 @@ main(int argc, char *argv[])
     system("clear");
 
     fd = start_client(IP,PORT);
+    if (fd == 0) continue;
+    
     client_send(" \r\n \r\n");
-    delay(200);
+    delay(50);
     char* data = client_read();
+    client_close(fd);
+
+    
     response = SSFP_new_response();
     SSFP_parse_response(response, data);
-    SSFP_print_response(response);  
+    SSFP_print_response(response);
   }
   
   

@@ -28,32 +28,23 @@ SSFPResponse *SSFP_new_response()
   return res;
 }
 
-void SSFP_free_response(SSFPResponse *response)
+void SSFP_free_response(SSFPResponse *res)
 {
   SSFPDirective *cur_directive;
-  free(response->context);
-  free(response->session);
-  /*
-  for(int i = 0; i < response->num_directives; i++) {
-    cur_directive = response->directives + (i*sizeof(SSFPDirective));
-    switch (cur_directive->type) {
-    case DTEXT:
-      free(cur_directive->text.string);
-      break;  
-    case DFORM:
-      free(cur_directive->form.id);
-      free(cur_directive->form.name);
-      break;
-    case DELEMENT:
-      free(cur_directive->element.data);
-      free(cur_directive->element.id);
-      free(cur_directive->element.name);
-      break;
-    }
-    free(cur_directive);
-  }
-  */
-  free(response);
+
+  StrArray_destroy(res->names);
+  StrArray_destroy(res->ids);
+  StrArray_destroy(res->text);
+  StrArray_destroy(res->options);
+  StrArray_destroy(res->option_ids);
+    
+  free(res->context);
+  free(res->session);
+  free(res->types);
+  free(res->element_types);
+  free(res->element_num_options);
+  
+  free(res);
 }
 
 /*
@@ -277,9 +268,6 @@ SSFP_print_response(SSFPResponse *res)
 {
   //printf("CONTEXT: %s\nSESSION: %s\n", res->context, res->session);
 
-  int name_counter = 0;
-  int text_count = 0;
-  int options_count = 0;
   int element_count = 0;
   int form_name_length = 0;
   
@@ -296,18 +284,15 @@ SSFP_print_response(SSFPResponse *res)
       element_type etype = res->element_types[element_count];
       if (res->element_types[element_count] == FIELD) {
         printf("%s: %s\n", StrArray_next(res->names),StrArray_next(res->text));
-        text_count++;
       } else if (res->element_types[element_count] == AREA) {
         printf("%s:\n", StrArray_cur(res->names));
         printf("--------------------\n");
         printf("%s\n", StrArray_cur(res->text));
         printf("--------------------\n");
-        text_count++;
       } else if (etype == RADIO || etype == CHECK) {
         printf("%s:\n", StrArray_next(res->names));
         for (int j = 0; j < res->element_num_options[element_count]; j++) {
           printf(" |%s: %s\n", StrArray_next(res->option_ids), StrArray_next(res->options));
-          options_count++;
         }
       } else if (etype == SUBMIT) {
           printf("\n");
@@ -315,7 +300,6 @@ SSFP_print_response(SSFPResponse *res)
       }
 
       element_count++;
-      name_counter++;
     }
   }
   print_many("=", form_name_length+8);

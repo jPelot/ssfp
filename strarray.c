@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include "strarray.h"
 
@@ -14,8 +15,8 @@ struct string_array_t {
 StrArray
 StrArray_create()
 {
-  StrArray strarr = malloc(sizeof(StrArray));
-  strarr->arr = malloc(INITIAL_SIZE);
+  StrArray strarr = malloc(sizeof(struct string_array_t));
+  strarr->arr = malloc(sizeof(char *) * INITIAL_SIZE);
   strarr->strptr_allocated = INITIAL_SIZE;
   strarr->length = 0;
   strarr->index  = 0;
@@ -36,8 +37,8 @@ void
 StrArray_add(StrArray arr, const char *str)
 {
   if(arr->length >= arr->strptr_allocated) {
-    arr->arr = realloc(arr->arr, arr->strptr_allocated + INITIAL_SIZE);
     arr->strptr_allocated += INITIAL_SIZE;
+    arr->arr = realloc(arr->arr, arr->strptr_allocated * sizeof(char *));
   }  
   int len = strlen(str);
   arr->arr[arr->length] = malloc(len+1);
