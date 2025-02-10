@@ -9,6 +9,8 @@ void     StrArray_add(StrArray arr, const char *str);
 void     StrArray_set(StrArray arr, int index, const char *str);
 int      StrArray_length(StrArray arr);
 const char* StrArray_get(StrArray arr, int index);
+const char* StrArray_last(StrArray arr);
+void    StrArray_add_arr(StrArray arr, StrArray that);
 
 // Iteration functions
 void        StrArray_begining(StrArray arr);

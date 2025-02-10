@@ -55,6 +55,15 @@ StrArray_get(StrArray arr, int index)
   return arr->arr[index];
 }
 
+const char*
+StrArray_last(StrArray arr)
+{
+  if (arr->length == 0) {
+    return NULL;
+  }
+  return arr->arr[arr->length-1];
+}
+
 void
 StrArray_set(StrArray arr, int index, const char *str)
 {
@@ -70,6 +79,14 @@ int
 StrArray_length(StrArray arr)
 {
   return arr->length;
+}
+
+void
+StrArray_add_arr(StrArray arr, StrArray that)
+{
+  for(int i = 0; i < that->length; i++) {
+    StrArray_add(arr, that->arr[i]);
+  }
 }
 
 void

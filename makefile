@@ -2,8 +2,8 @@ CC     = gcc
 CFLAGS = -g
 RM     = rm -f
 
-HEADERS = ssfp.h socket.h strarray.h intarray.h
-OBJECTS = ssfp.o socket.o strarray.o intarray.o
+HEADERS = ssfp.h socket.h strarray.h intarray.h parser.h
+OBJECTS = ssfp.o socket.o strarray.o intarray.o parser.o
 
 LDFLAGS = -L/usr/local/ssl/lib
 LDLIBS = -lssl -lcrypto

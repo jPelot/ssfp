@@ -1,12 +1,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-
 #include "ssfp.h"
+#include "parser.h"
 #include "strarray.h"
 
-
-SSFPResponse *SSFPResponse_create()
+SSFPResponse*
+SSFPResponse_create()
 {
   SSFPResponse *res = malloc(sizeof(SSFPResponse));
   
@@ -21,7 +21,8 @@ SSFPResponse *SSFPResponse_create()
   return res;
 }
 
-void SSFP_free_response(SSFPResponse *res)
+void
+SSFP_free_response(SSFPResponse *res)
 {
   free(res->context);
   free(res->session);
@@ -31,7 +32,6 @@ void SSFP_free_response(SSFPResponse *res)
   free(res->forms);  
   free(res);
 }
-
 
 SSFPForm*
 SSFPForm_create() {
@@ -54,6 +54,7 @@ SSFPForm_create() {
  *  Copies string from **str to dest until the first instance of '\r'.
  *  Increments *str. Returns 1 if string is empty, otherwise, 0;
  */
+ 
 int
 next_line(char **str, char *dest)
 {
@@ -86,6 +87,7 @@ next_line(char **str, char *dest)
   return 0;
 }
 
+/*
 int
 next_subline(char **str, char *dest)
 {
@@ -114,51 +116,40 @@ next_subline(char **str, char *dest)
   }
   return 0;
 }
-
-int parse_directive(SSFPResponse *res, char *str) {
-  char **strptr = &str;
-  char *index;
-  char buffer[256];
+*/
+int
+parse_directive(SSFPResponse *res, Parser p)
+{ 
+  char *type, *id, *name;
+  StrArray option_ids, option_names;
   DType dir_type;
+  element_type e_type;
+  SSFPForm *form; 
 
-  if (str[0] == '%') {
+  switch (Parser_first_char(p)) {
+  case '%':
     dir_type = DTEXT;
-  } else if (str[0] == '&') {
+    break;
+  case '&':
     dir_type = DFORM;
-  } else {
+    break;
+  default:
     dir_type = DELEMENT;
+    break;
   }
 
   if (dir_type == DTEXT) {
     IntArray_add(res->types, DTEXT);
-    StrArray_add(res->messages, str+1);
+    StrArray_add(res->messages, Parser_line(p)+1);
     return 0;
   }
   
-  next_subline(strptr, buffer);
-
   if (dir_type == DFORM) {
-    SSFPForm *form = SSFPForm_create();
+    form = SSFPForm_create();
     res->forms[res->num_forms++] = form;
-    
     IntArray_add(res->types, DFORM);
-
-    char *c = strchr(buffer, ' ');
-    if(c == NULL) {
-      return 1;
-    }
-    *c = '\0';
-    
-    form->id = malloc(strlen(buffer+1) +1);
-    strcpy(form->id, buffer+1);
-    
-    int len = strlen(c+1);
-    if (len < 1) {
-      return 1;
-    }
-    form->name = malloc(strlen(c+1) + 1);
-    strcpy(form->name, c+1);
-    
+    form->id = Parser_field(p, 0)+1;
+    form->name = Parser_field(p, 1);
     return 0;
   }
 
@@ -166,81 +157,68 @@ int parse_directive(SSFPResponse *res, char *str) {
     return 1;
   }
 
-  SSFPForm *form = res->forms[res->num_forms - 1];
+  form = res->forms[res->num_forms - 1];
+  
+  if ((type = Parser_field(p,0)) == NULL) return 1;
+  if ((id   = Parser_field(p,1)) == NULL) return 1;
+  if ((name = Parser_field(p,2)) == NULL) return 1;
 
-  char *c_index;
-  char *type, *id, *name;
+  if      (strcmp(type, "field")  == 0) e_type = FIELD;
+  else if (strcmp(type, "area")   == 0) e_type = AREA;
+  else if (strcmp(type, "radio")  == 0) e_type = RADIO;
+  else if (strcmp(type, "check")  == 0) e_type = CHECK;
+  else if (strcmp(type, "submit") == 0) e_type = SUBMIT;
+  else return 1;
 
-  if ((type = strtok(buffer, " ")) == NULL) {
-    return 1;
-  }
-  if ((id = strtok(NULL, " ")) == NULL) {
-    return 1;
-  }
-  if ((name = strtok(NULL, "\0")) == NULL) {
-    return 1;
-  }
-
-  element_type e_type;
-  if      (strcmp(type, "field") == 0) {e_type = FIELD;}
-  else if (strcmp(type, "area") == 0)  {e_type = AREA;}
-  else if (strcmp(type, "radio") == 0) {e_type = RADIO;}
-  else if (strcmp(type, "check") == 0) {e_type = CHECK;}
-  else if (strcmp(type, "submit") == 0){e_type = SUBMIT;}
-  else {return 1;}
-
-  if (e_type == SUBMIT) {
+  switch(e_type) {
+  case SUBMIT:
     StrArray_add(form->submit_names, name);
     StrArray_add(form->submit_ids, id);
-    return 0;
-  }
-
-  IntArray_add(form->element_types, e_type);
-
-  StrArray_add(form->element_names, name);
-  StrArray_add(form->element_ids, id);
-
-  if (e_type == FIELD || e_type == AREA) {
-    StrArray_add(form->element_texts, *strptr);
+    break;
+  case FIELD:
+  case AREA:
+    IntArray_add(form->element_types, e_type);
+    StrArray_add(form->element_names, name);
+    StrArray_add(form->element_ids, id);
+    StrArray_add(form->element_texts, Parser_data(p));
     IntArray_add(form->num_options, -1);
+    break;
+  case RADIO:
+  case CHECK:
+    IntArray_add(form->element_types, e_type);
+    StrArray_add(form->element_names, name);
+    StrArray_add(form->element_ids, id);
+    option_ids = Parser_option_ids(p);
+    option_names = Parser_option_names(p);
+    StrArray_add_arr(form->option_ids, option_ids);
+    StrArray_add_arr(form->option_names, option_names);
+    IntArray_add(form->num_options, StrArray_length(option_ids));
+    StrArray_destroy(option_ids);
+    StrArray_destroy(option_names);
+    break;
+  default:
+    break;
   }
-  else if (e_type == RADIO || e_type == CHECK) {
-    int num_options = 0;
-
-    while((next_subline(strptr, buffer)) == 0) {
-      num_options++;
-      char *c = strchr(buffer, ' ');
-      if (c == NULL) {return 1;}
-      *c = '\0';
-      StrArray_add(form->option_ids, buffer);
-      StrArray_add(form->option_names, c+1);
-    }
-    IntArray_add(form->num_options, num_options);
-  }
-
   return 0;
 }
 
 int SSFP_parse_response(SSFPResponse *response, char *str) {
-  char **strptr = &str;
+  Parser p = Parser_create(str);
   response->context = malloc(100);
   response->session = malloc(100);
-  next_line(strptr, response->context);
-  next_line(strptr, response->session);
-
-  char line_buffer[256];
-
-  int index = 0;
-  int num_allocated = 10;
+  strcpy(response->context, Parser_line(p));
+  Parser_nextline(p);
+  strcpy(response->session, Parser_line(p));
   
-  while(next_line(strptr, line_buffer) == 0) {
-    parse_directive(response, line_buffer);
+  while (Parser_nextline(p)) {
+    parse_directive(response, p);
   }
   return 0;
 }
 
 void
-print_string_indent(const char *str, char *indent) {
+print_string_indent(const char *str, char *indent)
+{
   char *buff = malloc(strlen(str)+1);
   strcpy(buff, str);
   char *strptr = strtok(buff, "\n");
@@ -251,7 +229,8 @@ print_string_indent(const char *str, char *indent) {
 }
 
 void
-print_boxed(const char *str) {
+print_boxed(const char *str)
+{
   int len = strlen(str);
   printf("+");
   for(int i = 0; i < len + 2; i++) printf("-");
@@ -261,43 +240,10 @@ print_boxed(const char *str) {
 }
 
 void
-print_many(char *str, int num) {
+print_many(char *str, int num)
+{
   for (int i = 0; i < num; i++) printf("%s", str);
 }
-
-
-/*
-void
-SSFP_next(SSFPResponse *res) {
-  DType cur_type;
-  while(!IntArray_at_end(res->directive_types)) {
-    cur_type = IntArray_next(res->directive_types);
-    switch (cur_type) {
-    case DTEXT:
-      StrArray_next(res->messages);
-      break;
-    case DFORM:
-      StrArray_next(res->form_names);
-      StrArray_next(res->form_ids);
-      break;
-    case DELEMENT:
-      StrArray_next(res->element_names);
-      StrArray_next(res->element_ids);
-      int options = IntArray_next(res->element_num_options);
-      if (options == -1) {
-        StrArray_next(res->element_texts);
-      }
-      else {
-        for(int i = 0; i < options; i++) {
-          StrArray_next(res->options);
-          StrArray_next(res->option_ids);
-        }
-      }
-      break;
-    }
-  }
-}
-*/
 
 void
 print_form(SSFPForm *form) {
