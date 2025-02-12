@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 #include "strarray.h"
 
 #define INITIAL_SIZE 10
@@ -11,6 +12,15 @@ struct string_array_t {
   int index;
   char **arr;
 };
+
+int
+has_print_char(const char *str) {
+  while(str[0] != '\0') {
+    if (isprint(str[0])) return 1;
+    str = str+1;
+  }
+  return 0;
+}
 
 StrArray
 StrArray_create()
@@ -36,7 +46,8 @@ StrArray_destroy(StrArray arr)
 void
 StrArray_add(StrArray arr, const char *str)
 {
-  if(arr->length >= arr->strptr_allocated) {
+  if (!has_print_char(str)) return;
+  if (arr->length >= arr->strptr_allocated) {
     arr->strptr_allocated += INITIAL_SIZE;
     arr->arr = realloc(arr->arr, arr->strptr_allocated * sizeof(char *));
   }  

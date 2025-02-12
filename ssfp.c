@@ -70,9 +70,27 @@ SSFPRequest_create()
   SSFPRequest *req = malloc(sizeof(SSFPRequest));
   req->context = NULL;
   req->session = NULL;
+  req->form_id = NULL;
   req->submit_id = NULL;
-  req->form = SSFPForm_create();
+  req->ids = StrArray_create();
+  req->num_options = IntArray_create();
+  req->option_ids = StrArray_create();
+  req->text_data = StrArray_create();
   return req;
+}
+
+void
+SSFPRequest_destroy(SSFPRequest *req)
+{
+  free(req->context);
+  free(req->session);
+  free(req->form_id);
+  free(req->submit_id);
+  StrArray_destroy(req->ids);
+  IntArray_destroy(req->num_options);
+  StrArray_destroy(req->option_ids);
+  StrArray_destroy(req->text_data);
+  free(req);
 }
 
 void
@@ -229,8 +247,16 @@ SSFPResponse_print(SSFPResponse *res)
 }
 
 char*
-SSFP_prompt(SSFPResponse *res)
+SSFPRequest_to_string(SSFPRequest *req) {
+    
+}
+
+
+SSFPRequest*
+SSFPResponse_prompt(SSFPResponse *res)
 {
+  SSFPRequest *req = SSFPRequest_create();
+  
   StrArray arr = StrArray_create();
   StrArray_add(arr, " ");   //Context 0
   StrArray_add(arr, "\r\n");
@@ -253,7 +279,9 @@ SSFP_prompt(SSFPResponse *res)
 
   SSFPForm * form = res->forms[form_index];  
 
-  StrArray_set(arr,3,form->id);
+  req->context = res->context;
+  req->session = res->session;
+  req->form_id = form->id;
 
   system("clear");  
   printf("====%s====\n",form->name);
@@ -266,22 +294,21 @@ SSFP_prompt(SSFPResponse *res)
     id = StrArray_get(form->element_ids, i);
     name = StrArray_get(form->element_names, i);
 
-    StrArray_add(arr, id);
-    StrArray_add(arr,"\n");
+    StrArray_add(req->ids, id);
+    
     printf("%s: ",name);
     int chars;
     scanf("%s%n",inputbuffer, &chars);
 
-    StrArray_add(arr, inputbuffer);
-    StrArray_add(arr, "\r\n");  
+    StrArray_add(req->text_data, inputbuffer);
+    IntArray_add(req->num_options, -1);
   }
 
-  system("clear");
-  return StrArray_combine(arr);
+  return req;
 }
 
 int
-parse_request_element(SSFPForm *form, Parser p, SSFPForm *res_form)
+parse_request_element(SSFPForm *form, Parser p)
 {
   char **strptr;
   char buffer[100];
@@ -289,44 +316,17 @@ parse_request_element(SSFPForm *form, Parser p, SSFPForm *res_form)
   int e_type = NONE;
   StrArray option_ids, option_names;
   
-  if ((id   = Parser_field(p,0,0)) == NULL) return 1;
+  if ((id = Parser_field(p,0,0)) == NULL) return 1;
 
-  for(int i = 0; i < StrArray_length(res_form->element_ids); i++) {
-    if (strcmp(StrArray_get(res_form->element_ids, i), id) == 0) {
-      e_type = IntArray_get(res_form->element_types, i);
-      break;
-    }
-  }
+  
+  
 
-  switch(e_type) {
-  case FIELD:
-  case AREA:
-    IntArray_add(form->element_types, e_type);
-    StrArray_add(form->element_ids, id);
-    StrArray_add(form->element_texts, Parser_data(p));
-    IntArray_add(form->num_options, -1);
-    break;
-  case RADIO:
-  case CHECK:
-    IntArray_add(form->element_types, e_type);
-    StrArray_add(form->element_ids, id);
-    option_ids = Parser_option_ids(p);
-    option_names = Parser_option_names(p);
-    StrArray_add_arr(form->option_ids, option_ids);
-    StrArray_add_arr(form->option_names, option_names);
-    IntArray_add(form->num_options, StrArray_length(option_ids));
-    StrArray_destroy(option_ids);
-    StrArray_destroy(option_names);
-    break;
-  default:
-    return 1;
-    break;
-  }
+  
   return 0;  
 }
 
 int
-parse_request(SSFPRequest *req, char *str, SSFPResponse *res)
+parse_request(SSFPRequest *req, char *str)
 {
   char **strptr;
   char buffer[100];
@@ -346,16 +346,9 @@ parse_request(SSFPRequest *req, char *str, SSFPResponse *res)
   strcpy(req->form_id, Parser_line(p));
   Parser_nextline(p);
   strcpy(req->submit_id, Parser_line(p));
-
-  for(int i = i; i < res->num_forms; i++) {
-    if (strcmp(res->forms[i]->id, req->form_id) == 0) {
-      res_form = res->forms[i];
-    }
-  }
-  if (res_form == NULL) {return 1;}
   
   while (Parser_nextline(p)) {
-    parse_request_element(req->form, p, res_form);  
+    parse_request_element(req->form, p);  
   }
 
   return 0;

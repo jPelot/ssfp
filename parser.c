@@ -78,7 +78,7 @@ Parser_field(Parser p, int index, int include_rest)
       *ptr = '\0';
     }
   }
-  out = malloc(strlen(out));
+  out = malloc(strlen(base)+1);
   strcpy(out, base);
   return out;
 }

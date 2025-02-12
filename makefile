@@ -2,24 +2,24 @@ CC     = gcc
 CFLAGS = -g
 RM     = rm -f
 
-HEADERS = ssfp.h socket.h strarray.h intarray.h parser.h
-OBJECTS = ssfp.o socket.o strarray.o intarray.o parser.o
+HEADERS = ssfp-client.h socket.h strarray.h intarray.h parser.h
+OBJECTS = ssfp-client.o socket.o strarray.o intarray.o parser.o
 
 LDFLAGS = -L/usr/local/ssl/lib
 LDLIBS = -lssl -lcrypto
 
 default: all
 
-all: ssfp-server ssfp-client
+all: server client
 
 %.o: %.c $(HEADERS)
 	gcc -c $< -o $@
 
-ssfp-server: ssfp-server.o $(OBJECTS)
-	$(CC) ssfp-server.o $(OBJECTS) -o ssfp-server $(LDFLAGS) $(LDLIBS)
+server: server.o $(OBJECTS)
+	$(CC) server.o $(OBJECTS) -o server $(LDFLAGS) $(LDLIBS)
 
-ssfp-client: ssfp-client.o $(OBJECTS)
-	$(CC) ssfp-client.o $(OBJECTS) -o ssfp-client $(LDFLAGS) $(LDLIBS)
+client: client.o $(OBJECTS)
+	$(CC) client.o $(OBJECTS) -o client $(LDFLAGS) $(LDLIBS)
 
 clean:
 	-rm -f *.o

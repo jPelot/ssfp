@@ -14,23 +14,10 @@ typedef enum {
 } element_type;
 
 typedef enum {
-  SSFPField,
-  SSFPArea,
-  SSFPRadio,
-  SSFPCheck,
-  SSFPSubmit
-} SSFPElementType;
-
-typedef enum {
   DTEXT,
   DFORM,
   DELEMENT,
 } DType;
-
-typedef struct {
-  DType type;
-  
-} SSFPDirective;
 
 typedef struct {
   char *id;
@@ -66,19 +53,26 @@ typedef struct {
 typedef struct {
   char *context;
   char *session;
-  char *submit_id;
   char *form_id;
-  SSFPForm *form;
+  char *submit_id;
+  
+  StrArray ids;
+  IntArray num_options;
+  StrArray option_ids;
+  StrArray text_data;
+
 } SSFPRequest;
 
 
-SSFPResponse *SSFPResponse_create();
-void SSFPResponse_destroy(SSFPResponse *response);
-int SSFP_parse_response(SSFPResponse *SSFPResponse, char *str);
-void SSFPResponse_print(SSFPResponse *res);
-char *SSFP_prompt(SSFPResponse *res);
+SSFPResponse* SSFPResponse_create();
+void          SSFPResponse_destroy(SSFPResponse *response);
+int           SSFPResponse_parse(SSFPResponse *SSFPResponse, char *str);
+void          SSFPResponse_print(SSFPResponse *res);
+SSFPRequest*  SSFPResponse_prompt(SSFPResponse *res);
 
-SSFPRequest *SSFPRequest_create();
-int parse_request(SSFPRequest *req, char *str, SSFPResponse *res);
+SSFPRequest*  SSFPRequest_create();
+void          SSFPRequest_destroy(SSFPRequest *req);
+int           SSFPRequest_parse(SSFPRequest *req, char *str);
+char*         SSFPRequest_to_string(SSFPRequest *req);
 
 #endif //ssfp_h
