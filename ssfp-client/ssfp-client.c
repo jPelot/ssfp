@@ -341,3 +341,27 @@ SSFP_Form_element_option_names(SSFP_Form form, int element_index)
   }
   return arr;
 }
+
+void
+SSFP_Client_request_start(SSFP_Form form, int form_index)
+{
+    
+}
+
+void
+SSFP_Client_request_add_text(SSFP_Form form, int element_index, const char* str)
+{
+  
+}
+
+void
+SSFP_Client_request_add_option(SSFP_Form form, int element_index, const char* option_id)
+{
+  
+}
+
+char*
+SSFP_Client_request_generate(SSFP_Form formm)
+{
+  
+}

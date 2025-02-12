@@ -60,6 +60,9 @@ StrArray_add(StrArray arr, const char *str)
 const char*
 StrArray_get(StrArray arr, int index)
 {
+  if (index < 0) {
+    index = arr->length + index;
+  }
   if (index < 0 || index >= arr->length) {
     return NULL;
   }
@@ -100,6 +103,7 @@ StrArray_add_arr(StrArray arr, StrArray that)
   }
 }
 
+/*
 void
 StrArray_begining(StrArray arr)
 {
@@ -128,9 +132,26 @@ StrArray_cmp(StrArray arr, const char *str) {
   if (this == NULL) return 0;
   return strcmp(this, str);
 }
-
+*/
 char *
 StrArray_combine(StrArray arr) {
+  int total_length = 0;
+  char *combined;
+  char *p;
+  for(int i = 0; i < arr->length; i++) {
+    total_length += strlen(arr->arr[i]);
+  }
+  combined = malloc(total_length + 1);
+  p = combined;
+  for(int i = 0; i < arr->length; i++) {
+    strcpy(p,arr->arr[i]);
+    p += strlen(arr->arr[i]);
+  }
+  return combined;
+}
+
+char *
+StrArray_splice(StrArray arr, const char* str) {
   int total_length = 0;
   char *combined;
   char *p;
