@@ -5,8 +5,8 @@ RM     = rm -f
 HEADERS = ssfp-client.h socket.h strarray.h intarray.h parser.h
 OBJECTS = ssfp-client.o socket.o strarray.o intarray.o parser.o
 
-LDFLAGS = -L/usr/local/ssl/lib
-LDLIBS = -lssl -lcrypto
+override LDFLAGS += -L/usr/local/ssl/lib
+override LDLIBS += -lssl -lcrypto
 
 default: all
 

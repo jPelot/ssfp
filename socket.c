@@ -1,14 +1,6 @@
-#include <openssl/evp.h>
 #include <stdio.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <sys/errno.h>
-#include <unistd.h> // read(), write(), close()
 
 //#include <openssl/applink.c>
 #include <openssl/bio.h>
@@ -17,13 +9,16 @@
 
 #include "socket.h"
 
+
+
+
 #define MAX 800
 #define PORT 8080
 
 SSL_CTX *ctx;
 
 SSL *server_ssl;
-int server_client;
+SOCKET server_client;
 
 SSL *client_ssl;
 
@@ -46,9 +41,17 @@ void ShutdownSSL(SSL *cSSL)
   SSL_free(cSSL);
 }
 
-int
+SOCKET
 start_server()
 {
+#if defined(_WIN32)
+  WSADATA d;
+  if (WSAStartup(MAKEWORD(2, 2), &d)) {
+    fprintf(stderr, "Failed to initialize.\n");
+    return 1;
+  }
+#endif
+
   SSL_library_init();
   OpenSSL_add_all_algorithms();
   SSL_load_error_strings();
@@ -77,27 +80,37 @@ start_server()
   getaddrinfo(0, "8080", &hints, &bind_address);
 
   printf("Creating socket...\n");
-  int socket_listen;
+  SOCKET socket_listen;
   socket_listen = socket(bind_address->ai_family,
                          bind_address->ai_socktype,
                          bind_address->ai_protocol);
   if(socket_listen < 0) {
-    fprintf(stderr, "socket() failed. (%d)\n", errno);
+    fprintf(stderr, "socket() failed. (%d)\n", GETSOCKETERRNO());
     return 1;
   }
 
   printf("Binding socket to local address...\n");
   if (bind(socket_listen, bind_address->ai_addr, bind_address->ai_addrlen)) {
-    fprintf(stderr, "bind() failed. (%d)\n", errno);
+    fprintf(stderr, "bind() failed. (%d)\n", GETSOCKETERRNO());
     return 1;
   }
+  freeaddrinfo(bind_address);
 
   return socket_listen;
 }
 
-int
+SOCKET
 start_client(char* hostname, char *port)
 {
+  
+#if defined(_WIN32)
+  WSADATA d;
+  if (WSAStartup(MAKEWORD(2,2), &d)) {
+    fprintf(stderr, "Failed to initialize.\n");
+    return 1;
+  }
+#endif
+  
   SSL_library_init();
   OpenSSL_add_all_algorithms();
   SSL_load_error_strings();
@@ -114,7 +127,7 @@ start_client(char* hostname, char *port)
   hints.ai_socktype = SOCK_STREAM;
   struct addrinfo *peer_address;
   if (getaddrinfo(hostname, port, &hints, &peer_address)) {
-    fprintf(stderr, "getaddrinfo() failed. (%d)\n", errno);
+    fprintf(stderr, "getaddrinfo() failed. (%d)\n", GETSOCKETERRNO());
     return 1;
   }
 
@@ -128,12 +141,12 @@ start_client(char* hostname, char *port)
   //printf("%s %s\n", address_buffer, service_buffer);
 
   //printf("Creating socket...\n");
-  int server;
+  SOCKET server;
   server = socket(peer_address->ai_family,
                   peer_address->ai_socktype,
                 peer_address->ai_protocol);
   if(socket < 0) {
-    fprintf(stderr, "socket() failed. (%d)\n", errno);
+    fprintf(stderr, "socket() failed. (%d)\n", GETSOCKETERRNO());
     return 1;
   }
 
@@ -141,7 +154,7 @@ start_client(char* hostname, char *port)
   if (connect(server,
               peer_address->ai_addr,
             peer_address->ai_addrlen)) {
-    fprintf(stderr, "connect() failed. (%d)\n", errno);
+    fprintf(stderr, "connect() failed. (%d)\n", GETSOCKETERRNO());
     return 1;
   }
   freeaddrinfo(peer_address);
@@ -180,23 +193,23 @@ start_client(char* hostname, char *port)
 }
 
 char*
-server_listen(int socket_listen)
+server_listen(SOCKET socket_listen)
 {
   
   printf("Listening...\n");
   if(listen(socket_listen, 10) < 0) {
-    fprintf(stderr, "listen() failed. (%d)\n", errno);
+    fprintf(stderr, "listen() failed. (%d)\n", GETSOCKETERRNO());
     return NULL;
   }
 
   printf("Waiting for connection...\n");
   struct sockaddr_storage client_address;
   socklen_t client_len = sizeof(client_address);
-  int socket_client = accept(socket_listen,
+  SOCKET socket_client = accept(socket_listen,
                              (struct sockaddr*) &client_address,
                              &client_len);
   if (socket_client < 0) {
-    fprintf(stderr, "accept() failed. (%d)\n", errno);
+    fprintf(stderr, "accept() failed. (%d)\n", GETSOCKETERRNO());
     return NULL;
   }
 
@@ -220,7 +233,7 @@ server_listen(int socket_listen)
     fprintf(stderr, "SSL_accept() failed.\n");
     ERR_print_errors_fp(stderr);
     SSL_shutdown(ssl);
-    close(socket_client);
+    CLOSESOCKET(socket_client);
     SSL_free(ssl);
     return NULL;
   }
@@ -241,7 +254,6 @@ server_listen(int socket_listen)
   server_client = socket_client;
   
   return buffer;
-
 }
 
 void
@@ -251,23 +263,31 @@ server_send(char *str) {
 
   printf("Closing connection...\n");
   SSL_shutdown(server_ssl);
-  close(server_client);
+  CLOSESOCKET(server_client);
   SSL_free(server_ssl);
 }
 
-void server_close(int socket_listen) {
-  close(socket_listen);
+void server_close(SOCKET socket_listen) {
+  CLOSESOCKET(socket_listen);
   SSL_CTX_free(ctx);
+
+#if defined(_WIN32)
+  WSACleanup();
+#endif
 }
 
 void 
-client_close(int socket)
+client_close(SOCKET socket)
 {
   //printf("Closing socket...");
   SSL_shutdown(client_ssl);
-  close(socket);
+  CLOSESOCKET(socket);
   SSL_free(client_ssl);
   SSL_CTX_free(ctx);
+
+#if defined(_WIN32)
+  WSACleanup();
+#endif
 }
 
 void
@@ -288,7 +308,7 @@ client_read() {
   buffer[total_bytes] = '\0';
   return buffer;
 }
-
+/*
 char*
 read_fd(int fd)
 {
@@ -304,3 +324,4 @@ read_fd(int fd)
   //printf("From client:\n %s", buff);
   return buff;
 }
+*/
