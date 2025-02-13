@@ -21,6 +21,7 @@ windows: CFLAGS+= -static
 all: client
 
 client: submodules $(OBJECT_FILES)
+	mkdir -p bin
 	$(CC) $(CFLAGS) $(LDFLAGS) -o bin/client $(OBJECT_FILES) $(LDLIBS)
 	
 $(SUBMODULE_DIR)/%.o: $(SUBMODULE_DIR)/%.c
