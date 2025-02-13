@@ -1,0 +1,3 @@
+[submodule "ssfp-client"]
+	path = ssfp-client
+	url = https://github.com/jPelot/ssfp-client.git
