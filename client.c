@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include "socket.h"
-#include "ssfp-client.h"
+#include "ssfp-client/ssfp-client.h"
 
 void delay(int milliseconds) {
   clock_t start_time = clock();
@@ -79,7 +79,7 @@ main(int argc, char *argv[])
   //SSFPResponse_print(response);
   //SSFP_free_response(response);
 
-  char in_buffer[200];
+  //char in_buffer[200];
   /*
   while(1) {
 
